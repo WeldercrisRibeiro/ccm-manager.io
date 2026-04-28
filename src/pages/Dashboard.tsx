@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from "react";
-import { 
-  Terminal, 
-  Search, 
-  Play, 
-  Loader2, 
+import {
+  Terminal,
+  Search,
+  Play,
+  Loader2,
   ShieldCheck,
   UserPlus,
   KeyRound,
@@ -13,10 +13,14 @@ import {
   Upload,
   AlertTriangle,
   X,
-  LogOut
+  LogOut,
+  Sun,
+  Moon
 } from "lucide-react";
 import api from "../lib/api";
 import { useAuth } from "../contexts/AuthContext";
+import { useTheme } from "../contexts/ThemeContext";
+import { cn } from "../lib/utils";
 
 interface ScriptField {
   name: string;
@@ -55,6 +59,7 @@ const Dashboard = () => {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [uploading, setUploading] = useState<string | null>(null);
   const { logout, user: currentUser } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const terminalRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -97,14 +102,36 @@ const Dashboard = () => {
   };
 
   const handleInputChange = (name: string, value: any) => {
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData(prev => {
+      const newData = { ...prev, [name]: value };
+
+      // Lógica "Smart" para facilitar o preenchimento (Consistente com Mergulho Connect)
+      if (selectedScript?.id === 'create-user') {
+        if (name === 'fullName' && value && !prev.username) {
+          const suggestedUsername = value.trim().toLowerCase().split(' ')[0].replace(/\s+/g, ".");
+          newData.username = suggestedUsername;
+          if (!prev.email || prev.email.endsWith('@ccmergulho.com')) {
+            newData.email = suggestedUsername + "@ccmergulho.com";
+          }
+        }
+
+        if (name === 'username' && value) {
+          const cleanUser = value.trim().toLowerCase().replace(/\s+/g, ".");
+          if (!prev.email || prev.email.endsWith('@ccmergulho.com')) {
+            newData.email = cleanUser + "@ccmergulho.com";
+          }
+        }
+      }
+
+      return newData;
+    });
   };
 
   const handleFileUpload = async (fieldName: string, file: File) => {
     setUploading(fieldName);
     const fd = new FormData();
     fd.append("file", file);
-    
+
     try {
       addLog(`Enviando arquivo: ${file.name}...`);
       const response = await api.post("/upload", fd, {
@@ -126,12 +153,22 @@ const Dashboard = () => {
 
   const executeScript = async () => {
     if (!selectedScript) return;
+
+    // Garante que campos de email/login sem @ sejam completados antes de enviar
+    const submissionData = { ...formData };
+    selectedScript.fields.forEach(field => {
+      const isEmailLike = field.type === 'email' || field.name.toLowerCase() === 'email' || field.name.toLowerCase() === 'login';
+      if (isEmailLike && submissionData[field.name] && !submissionData[field.name].includes('@')) {
+        submissionData[field.name] = submissionData[field.name].trim().toLowerCase() + "@ccmergulho.com";
+      }
+    });
+
     setConfirmOpen(false);
     setLoading(true);
     addLog(`Iniciando execução de: ${selectedScript.name}...`);
 
     try {
-      const response = await api.post(`/maintenance/run/${selectedScript.id}`, formData);
+      const response = await api.post(`/maintenance/run/${selectedScript.id}`, submissionData);
       addLog(`SUCESSO: ${response.data.message || "Script concluído"}`);
       if (selectedScript.id === 'create-user') setFormData({});
       setStatusMessage("Operação concluída com sucesso.");
@@ -164,7 +201,7 @@ const Dashboard = () => {
     }
   };
 
-  const filteredScripts = scripts.filter(s => 
+  const filteredScripts = scripts.filter(s =>
     s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     s.description.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -180,28 +217,35 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#0f172a] text-slate-200">
+    <div className="min-h-screen bg-background text-foreground">
       {/* Header */}
-      <header className="border-b border-slate-800 bg-slate-900/50 backdrop-blur-xl sticky top-0 z-50">
+      <header className="border-b border-border bg-card/50 backdrop-blur-xl sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <div className="bg-primary/20 p-2 rounded-xl">
+            <div className="bg-primary/10 p-2 rounded-xl">
               <ShieldCheck className="h-8 w-8 text-primary" />
             </div>
             <div>
-              <h1 className="text-xl font-black tracking-tight text-white uppercase">Maintenance Center</h1>
-              <p className="text-xs text-slate-500 font-bold tracking-widest uppercase">Portal Administrativo</p>
+              <h1 className="text-xl font-black tracking-tight text-foreground uppercase">CCM Manager</h1>
+              <p className="text-xs text-muted-foreground font-bold tracking-widest uppercase">Portal Administrativo</p>
             </div>
           </div>
-          
+
           <div className="flex items-center gap-6">
+            <button
+              onClick={toggleTheme}
+              className="p-3 rounded-xl bg-secondary hover:bg-primary/10 hover:text-primary transition-all border border-border"
+              title="Alternar Tema"
+            >
+              {theme === 'light' ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
+            </button>
             <div className="text-right hidden md:block">
-              <p className="text-sm font-bold text-white">{currentUser?.profile?.fullName || 'Admin'}</p>
-              <p className="text-xs text-slate-500">{currentUser?.email}</p>
+              <p className="text-sm font-bold text-foreground">{currentUser?.profile?.fullName || 'Admin'}</p>
+              <p className="text-xs text-muted-foreground">{currentUser?.email}</p>
             </div>
-            <button 
+            <button
               onClick={logout}
-              className="p-3 rounded-xl bg-slate-800 hover:bg-red-500/10 hover:text-red-500 transition-all border border-slate-700"
+              className="p-3 rounded-xl bg-secondary hover:bg-destructive/10 hover:text-destructive transition-all border border-border"
             >
               <LogOut className="h-5 w-5" />
             </button>
@@ -213,11 +257,11 @@ const Dashboard = () => {
         {/* Sidebar */}
         <aside className="lg:col-span-4 space-y-6">
           <div className="relative group">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-500 group-focus-within:text-primary transition-colors" />
-            <input 
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
+            <input
               type="text"
-              placeholder="Buscar ferramenta..." 
-              className="w-full h-14 pl-12 pr-4 bg-slate-900 border border-slate-800 rounded-2xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all shadow-xl"
+              placeholder="Buscar ferramenta..."
+              className="w-full h-14 pl-12 pr-4 bg-card border border-border rounded-2xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all shadow-sm"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -228,25 +272,31 @@ const Dashboard = () => {
               <button
                 key={script.id}
                 onClick={() => handleScriptSelect(script)}
-                className={`w-full text-left p-4 rounded-2xl border transition-all duration-300 group ${
+                className={cn(
+                  "w-full text-left p-4 rounded-2xl border transition-all duration-300 group",
                   selectedScript?.id === script.id
-                    ? "bg-primary border-primary shadow-2xl shadow-primary/30 scale-[1.02]"
-                    : "bg-slate-900 hover:bg-slate-800 border-slate-800 hover:border-slate-600"
-                }`}
+                    ? "bg-primary border-primary shadow-lg shadow-primary/20 scale-[1.02]"
+                    : "bg-card hover:bg-secondary border-border hover:border-primary/50"
+                )}
               >
                 <div className="flex items-center gap-4">
-                  <div className={`p-3 rounded-xl ${
-                    selectedScript?.id === script.id ? "bg-white/20" : "bg-primary/10 text-primary"
-                  }`}>
+                  <div className={cn(
+                    "p-3 rounded-xl transition-colors",
+                    selectedScript?.id === script.id ? "bg-white/20 text-white" : "bg-primary/5 text-primary group-hover:bg-primary/10"
+                  )}>
                     {getScriptIcon(script.id)}
                   </div>
                   <div>
-                    <h3 className={`font-bold ${selectedScript?.id === script.id ? "text-white" : "text-slate-200"}`}>
+                    <h3 className={cn(
+                      "font-bold transition-colors",
+                      selectedScript?.id === script.id ? "text-white" : "text-foreground"
+                    )}>
                       {script.name}
                     </h3>
-                    <p className={`text-xs mt-1 line-clamp-1 ${
-                      selectedScript?.id === script.id ? "text-white/70" : "text-slate-500"
-                    }`}>
+                    <p className={cn(
+                      "text-xs mt-1 line-clamp-1 transition-colors",
+                      selectedScript?.id === script.id ? "text-white/80" : "text-muted-foreground"
+                    )}>
                       {script.description}
                     </p>
                   </div>
@@ -255,11 +305,11 @@ const Dashboard = () => {
             ))}
           </div>
 
-          <button 
+          <button
             onClick={handleExportLogs}
-            className="w-full flex items-center justify-center gap-3 p-4 bg-slate-900 border border-slate-800 rounded-2xl hover:bg-slate-800 transition-all text-sm font-bold text-slate-400 hover:text-white group"
+            className="w-full flex items-center justify-center gap-3 p-4 bg-card border border-border rounded-2xl hover:bg-secondary transition-all text-sm font-bold text-muted-foreground hover:text-foreground group shadow-sm"
           >
-            <Download className="h-5 w-5 group-hover:animate-bounce" />
+            <Download className="h-5 w-5 group-hover:translate-y-0.5 transition-transform" />
             Exportar Auditoria (TXT)
           </button>
         </aside>
@@ -268,46 +318,47 @@ const Dashboard = () => {
         <section className="lg:col-span-8 space-y-8">
           {statusMessage && (
             <div
-              className={`rounded-2xl border px-4 py-3 text-sm font-semibold ${
+              className={cn(
+                "rounded-2xl border px-4 py-3 text-sm font-semibold animate-in fade-in slide-in-from-top-4 duration-300",
                 statusType === "error"
-                  ? "border-rose-500/40 bg-rose-500/10 text-rose-300"
+                  ? "border-destructive/20 bg-destructive/5 text-destructive"
                   : statusType === "success"
-                    ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
-                    : "border-sky-500/40 bg-sky-500/10 text-sky-300"
-              }`}
+                    ? "border-emerald-500/20 bg-emerald-500/5 text-emerald-600"
+                    : "border-primary/20 bg-primary/5 text-primary"
+              )}
             >
               {statusMessage}
             </div>
           )}
           {selectedScript ? (
             <div className="animate-in slide-in-from-right-8 duration-500 space-y-8">
-              <div className="bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl overflow-hidden">
-                <div className="p-8 border-b border-slate-800 bg-gradient-to-r from-primary/10 to-transparent">
+              <div className="bg-card border border-border rounded-3xl shadow-xl overflow-hidden">
+                <div className="p-8 border-b border-border bg-gradient-to-r from-primary/5 to-transparent">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h2 className="text-2xl font-black text-white flex items-center gap-3">
+                      <h2 className="text-2xl font-black text-foreground flex items-center gap-3">
                         {getScriptIcon(selectedScript.id)}
                         {selectedScript.name}
                       </h2>
-                      <p className="text-slate-400 mt-2">{selectedScript.description}</p>
+                      <p className="text-muted-foreground mt-2">{selectedScript.description}</p>
                     </div>
                     <Badge>{selectedScript.id}</Badge>
                   </div>
                 </div>
-                
+
                 <div className="p-8">
-                  <form onSubmit={(e) => { e.preventDefault(); setConfirmOpen(true); }} className="space-y-8">
+                  <form onSubmit={(e) => { e.preventDefault(); setConfirmOpen(true); }} className="space-y-8" noValidate>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       {selectedScript.fields.map((field) => (
                         <div key={field.name} className={`space-y-2 ${field.type === 'password' ? 'md:col-span-2' : ''}`}>
-                          <label className="text-sm font-bold text-slate-400 ml-1">
+                          <label className="text-sm font-bold text-muted-foreground ml-1">
                             {field.label} {field.required && <span className="text-primary">*</span>}
                           </label>
-                          
+
                           {field.type === "user_select" ? (
-                            <select 
-                              className="w-full h-14 px-4 bg-slate-950 border-slate-800 rounded-xl focus:border-primary outline-none text-white"
-                              value={formData[field.name] || ""} 
+                            <select
+                              className="w-full h-14 px-4 bg-secondary/50 border border-border rounded-xl focus:border-primary outline-none text-foreground transition-all"
+                              value={formData[field.name] || ""}
                               onChange={(e) => handleInputChange(field.name, e.target.value)}
                               required={field.required}
                             >
@@ -319,9 +370,9 @@ const Dashboard = () => {
                               ))}
                             </select>
                           ) : field.type === "select" ? (
-                            <select 
-                              className="w-full h-14 px-4 bg-slate-950 border-slate-800 rounded-xl focus:border-primary outline-none text-white"
-                              value={formData[field.name] || ""} 
+                            <select
+                              className="w-full h-14 px-4 bg-secondary/50 border border-border rounded-xl focus:border-primary outline-none text-foreground transition-all"
+                              value={formData[field.name] || ""}
                               onChange={(e) => handleInputChange(field.name, e.target.value)}
                               required={field.required}
                             >
@@ -334,44 +385,61 @@ const Dashboard = () => {
                             <div className="flex gap-4">
                               <input
                                 type="text"
-                                className="flex-1 h-14 px-4 bg-slate-950 border-slate-800 rounded-xl text-slate-500"
+                                className="flex-1 h-14 px-4 bg-secondary/30 border border-border rounded-xl text-muted-foreground"
                                 value={formData[field.name] || ""}
                                 readOnly
                                 placeholder="Nenhum arquivo enviado"
                               />
-                              <button 
-                                type="button" 
-                                className="h-14 px-6 bg-slate-800 hover:bg-slate-700 rounded-xl transition-all border border-slate-700 flex items-center justify-center"
+                              <button
+                                type="button"
+                                className="h-14 px-6 bg-secondary hover:bg-muted rounded-xl transition-all border border-border flex items-center justify-center"
                                 disabled={!!uploading}
                                 onClick={() => document.getElementById(`file-${field.name}`)?.click()}
                               >
                                 {uploading === field.name ? <Loader2 className="animate-spin h-5 w-5" /> : <Upload className="h-5 w-5" />}
                               </button>
-                              <input 
+                              <input
                                 id={`file-${field.name}`}
-                                type="file" 
-                                className="hidden" 
+                                type="file"
+                                className="hidden"
                                 onChange={(e) => e.target.files?.[0] && handleFileUpload(field.name, e.target.files[0])}
                               />
                             </div>
                           ) : (
-                            <input
-                              type={field.type}
-                              required={field.required}
-                              className="w-full h-14 px-4 bg-slate-950 border-slate-800 rounded-xl focus:border-primary outline-none text-white placeholder:text-slate-700"
-                              placeholder={field.label}
-                              value={formData[field.name] || ""}
-                              onChange={(e) => handleInputChange(field.name, e.target.value)}
-                            />
+                            <div className="relative flex items-center">
+                              <input
+                                type={(field.type === 'email' || field.name === 'email') ? 'text' : field.type}
+                                required={field.required}
+                                className={cn(
+                                  "w-full h-14 px-4 bg-secondary/50 border border-border rounded-xl focus:border-primary outline-none text-foreground placeholder:text-muted-foreground/50 transition-all",
+                                  (field.type === 'email' || field.name === 'email') && !formData[field.name]?.includes('@') && formData[field.name]?.length > 0 && "pr-[140px]"
+                                )}
+                                placeholder={field.label}
+                                value={formData[field.name] || ""}
+                                onChange={(e) => handleInputChange(field.name, e.target.value)}
+                                onBlur={(e) => {
+                                  const val = e.target.value;
+                                  const isEmailField = field.type === 'email' || field.name === 'email';
+                                  if (isEmailField && val && !val.includes('@')) {
+                                    handleInputChange(field.name, val.trim().toLowerCase() + "@ccmergulho.com");
+                                  }
+                                }}
+                              />
+                              {(field.type === 'email' || field.name === 'email') && !formData[field.name]?.includes('@') && formData[field.name]?.length > 0 && (
+                                <span className="absolute right-3 text-muted-foreground pointer-events-none font-medium">
+                                  @ccmergulho.com
+                                </span>
+                              )}
+                            </div>
                           )}
                         </div>
                       ))}
                     </div>
 
                     <div className="pt-4 flex items-center justify-between">
-                       <p className="text-xs text-slate-600 italic">* Campos obrigatórios</p>
-                       <button 
-                        type="submit" 
+                      <p className="text-xs text-muted-foreground italic">* Campos obrigatórios</p>
+                      <button
+                        type="submit"
                         disabled={loading || !!uploading}
                         className="h-14 px-12 bg-primary hover:bg-primary/90 text-white font-black rounded-2xl shadow-xl shadow-primary/20 transition-all active:scale-95 flex items-center gap-3"
                       >
@@ -384,44 +452,45 @@ const Dashboard = () => {
               </div>
 
               {/* Terminal */}
-              <div className="bg-slate-950 rounded-3xl border border-slate-800 shadow-2xl overflow-hidden">
-                <div className="px-6 py-4 bg-slate-900 border-b border-slate-800 flex items-center justify-between">
+              <div className="bg-muted/30 rounded-3xl border border-border shadow-inner overflow-hidden">
+                <div className="px-6 py-4 bg-card border-b border-border flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="h-3 w-3 rounded-full bg-emerald-500 animate-pulse" />
-                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">System Logs</span>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">System Logs</span>
                   </div>
-                  <button onClick={() => setOutput([])} className="p-1 hover:text-white transition-colors">
+                  <button onClick={() => setOutput([])} className="p-1 hover:text-foreground transition-colors">
                     <X className="h-4 w-4" />
                   </button>
                 </div>
-                <div 
+                <div
                   ref={terminalRef}
                   className="h-60 overflow-y-auto p-6 font-mono text-sm custom-scrollbar"
                 >
                   {output.length > 0 ? (
                     output.map((line, i) => (
-                      <div key={`${line}-${i}`} className={`mb-1 ${
-                        line.includes("ERRO") ? "text-rose-400" : 
-                        line.includes("SUCESSO") ? "text-emerald-400" : "text-slate-400"
-                      }`}>
-                        <span className="text-slate-600 mr-3">❯</span>
-                        {line}
+                      <div key={`${line}-${i}`} className={cn(
+                        "mb-1 flex gap-3",
+                        line.includes("ERRO") ? "text-destructive" :
+                          line.includes("SUCESSO") ? "text-emerald-600" : "text-muted-foreground"
+                      )}>
+                        <span className="opacity-40">❯</span>
+                        <span>{line}</span>
                       </div>
                     ))
                   ) : (
-                    <div className="text-slate-800 italic">Ready for commands...</div>
+                    <div className="text-muted-foreground/30 italic">Ready for commands...</div>
                   )}
                 </div>
               </div>
             </div>
           ) : (
-            <div className="h-full min-h-[600px] flex flex-col items-center justify-center text-center p-12 border-4 border-dashed border-slate-800 rounded-[3rem] bg-slate-900/20 space-y-6">
-              <div className="p-10 rounded-full bg-slate-900 shadow-inner">
-                <Settings2 className="h-24 w-24 text-slate-700" />
+            <div className="h-full min-h-[600px] flex flex-col items-center justify-center text-center p-12 border-4 border-dashed border-muted rounded-[3rem] bg-card/50 space-y-6">
+              <div className="p-10 rounded-full bg-muted shadow-inner text-muted-foreground/20">
+                <Settings2 className="h-24 w-24" />
               </div>
               <div>
-                <h3 className="text-2xl font-black text-white">Central de Operações</h3>
-                <p className="text-slate-500 mt-3 max-w-md mx-auto leading-relaxed">
+                <h3 className="text-2xl font-black text-foreground">Central de Operações</h3>
+                <p className="text-muted-foreground mt-3 max-w-md mx-auto leading-relaxed font-medium">
                   Bem-vindo ao Portal de Manutenção do Mergulho Connect. Escolha uma ferramenta na barra lateral para interagir diretamente com os dados do sistema.
                 </p>
               </div>
@@ -432,25 +501,25 @@ const Dashboard = () => {
 
       {/* Confirmation Modal */}
       {confirmOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-300">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl max-w-md w-full p-8 space-y-6">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-background/80 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="bg-card border border-border rounded-[2rem] shadow-2xl max-w-md w-full p-8 space-y-6 animate-in zoom-in-95 duration-300">
             <div className="flex items-center gap-4 text-amber-500">
               <div className="p-3 bg-amber-500/10 rounded-2xl">
                 <AlertTriangle className="h-8 w-8" />
               </div>
               <h3 className="text-xl font-black">Confirmar Operação</h3>
             </div>
-            <p className="text-slate-400 leading-relaxed">
+            <p className="text-muted-foreground leading-relaxed font-medium">
               Você está prestes a executar o script <strong>{selectedScript?.name}</strong>. Esta ação terá efeito imediato e permanente no banco de dados.
             </p>
             <div className="flex gap-4 pt-4">
-              <button 
+              <button
                 onClick={() => setConfirmOpen(false)}
-                className="flex-1 h-14 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-2xl transition-all"
+                className="flex-1 h-14 bg-secondary hover:bg-muted text-foreground font-bold rounded-2xl transition-all"
               >
                 Cancelar
               </button>
-              <button 
+              <button
                 onClick={executeScript}
                 className="flex-1 h-14 bg-primary hover:bg-primary/90 text-white font-bold rounded-2xl shadow-lg shadow-primary/20 transition-all"
               >
@@ -465,7 +534,7 @@ const Dashboard = () => {
 };
 
 const Badge = ({ children }: { children: React.ReactNode }) => (
-  <span className="px-3 py-1 bg-slate-950 border border-slate-800 text-slate-500 text-[10px] font-black uppercase tracking-widest rounded-full">
+  <span className="px-3 py-1 bg-secondary border border-border text-muted-foreground text-[10px] font-black uppercase tracking-widest rounded-full">
     {children}
   </span>
 );
