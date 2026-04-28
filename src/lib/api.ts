@@ -6,7 +6,7 @@ const isLocalHost =
   (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
 
 const normalizeBaseUrl = (url: string) => url.replace(/\/+$/, '');
-const resolvedBaseUrl = configuredBaseUrl || (isLocalHost ? 'https://mergulho-connect-eh6j.onrender.com:3001/api' : '/api');
+const resolvedBaseUrl = configuredBaseUrl || (isLocalHost ? 'http://localhost:3001/api' : 'https://mergulho-connect-eh6j.onrender.com/api');
 const apiBaseUrl = normalizeBaseUrl(resolvedBaseUrl);
 
 const api = axios.create({
