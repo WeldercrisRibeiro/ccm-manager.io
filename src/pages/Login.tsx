@@ -53,7 +53,7 @@ const Login = () => {
         <div className="relative z-10 flex flex-col items-center animate-in fade-in slide-in-from-left-12 duration-1000">
           <div className="bg-white/10 backdrop-blur-xl p-8 rounded-[3rem] border border-white/20 shadow-2xl mb-8">
             <img
-              src="/idvmergulho/logo-white.png"
+              src="https://ccmergulho.vercel.app/idvmergulho/logo-white.png"
               alt="Logo Mergulho"
               className="w-48 h-48 md:w-64 md:h-64 object-contain hover:scale-105 transition-transform duration-700"
             />
@@ -92,7 +92,7 @@ const Login = () => {
           <div className="lg:hidden text-center mb-10">
             <div className="inline-flex p-4 rounded-[2rem] bg-white/10 dark:bg-black/20 backdrop-blur-md border border-border shadow-2xl mb-6">
               <img
-                src={theme === 'dark' ? "/idvmergulho/logo-white.png" : "/idvmergulho/logo.png"}
+                src={theme === 'dark' ? "https://ccmergulho.vercel.app/idvmergulho/logo-white.png" : "https://ccmergulho.vercel.app/idvmergulho/logo.png"}
                 alt="Logo Mergulho"
                 className="h-16 w-16"
               />
