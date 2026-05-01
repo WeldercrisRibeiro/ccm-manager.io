@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { Shield, Lock, User, Loader2, ChevronRight, AlertCircle, Sun, Moon } from 'lucide-react';
+import { Lock, User, Loader2, ChevronRight, AlertCircle, Sun, Moon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { getApiBaseUrl } from '../lib/api';
 import { useTheme } from '../contexts/ThemeContext';
